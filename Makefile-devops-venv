@@ -1,0 +1,80 @@
+.PHONY: hello-venv help
+#.DEFAULT_GOAL := help
+# Variables
+#blog-howto := https://betterprogramming.pub/transform-your-favorite-python-ide-into-a-devops-tool-e0d3662baf45
+pre-commmit-howto := https://towardsdatascience.com/automating-python-workflows-with-pre-commit-hooks-e5ef8e8d50bb
+pre-commit-hooks := https://gdevops.gitlab.io/tuto_git/tools/pre-commit/pre-commit.html\#list-of-hooks-repos
+github-repo := https://github.com/JackySo-MYOB/devops-venv
+MAKEFILE = $(shell echo "$(MAKEFILE_LIST)" | awk '{ print $$1 }')
+SHELL := /bin/bash
+SRC := src
+PIPFILE_MAKE := requirements.txt.makefile
+PYTHON_FILE := --file devops.py
+
+#blog-howto: ## Medium - Transform Your Favorite Python IDE Into a DevOps Tool
+#        @google-chrome --incognito $(blog-howto) &
+
+.PHONY: pre-commit-hooks
+pre-commit-hooks: ## Howto - Pre-commit hooks
+	@google-chrome --incognito $(pre-commit-hooks) &
+
+fetch-github: ## Git clone to $(REPO) - DevOps Tool codes
+        @git clone $(github-repo) $(REPO) || true
+
+.PHONY: pip-install-choice
+pip-install-choice: venv ## Pick requirements.txt to PIP install
+	@(PS3="Input your choice: "; select opt in `find . -name "requirements.txt*" -print`; do $(VENV)/pip install -r "$${opt}"; break; done)
+
+.PHONY: pip-install
+pip-install: venv env-pip ## PIP install $(PIP) in virtual environment
+	@$(VENV)/pip install -U $(PIP)
+
+.PHONY: pip-install-requirements
+pip-install-requirements: venv ## PIP install $(PIP) in virtual environment
+	@find . -name "requirements.txt*" -print
+	@read -p "Input requirements.txt path to run or ctrl-C to quit: " pipfile && $(VENV)/pip install -r $${pipfile}
+
+.PHONY: pre-commit
+pre-commit: venv ## Setup pre-commit
+	@$(VENV)/pip install -U $@
+	@. $(VENV)/activate && exec $@ install
+
+.PHONY: black
+black: venv
+	@$(VENV)/pip install -r $(PIPFILE_MAKE)
+	@. $(VENV)/activate && exec $@ -v tests
+
+.PHONY: mypy
+mypy: venv
+	@$(VENV)/pip install -r $(PIPFILE_MAKE)
+	@. $(VENV)/activate && exec $@ $(SRC)
+
+.PHONY: flake8
+flake8: venv
+	@$(VENV)/pip install -r $(PIPFILE_MAKE)
+	@. $(VENV)/activate && exec $@ $(PYTHON_FILE)
+
+hello-venv: venv ## Python run src/main.py in virtual environment
+	$(VENV)/python src-hello/hello.py
+
+devops-venv: venv ## Python run devops.py in virtual environment
+	$(VENV)/pip install -r requirements.txt.devops
+	exec $(VENV)/python devops.py
+
+branch2main: ## Merge branch to main
+	@(CURRENT=`git branch --show-current`; git checkout main; git merge $${CURRENT})
+	@git commit -m 'Merge branch to main'; git push
+
+include Makefile.venv
+Makefile.venv:
+	@curl \
+		-s -o Makefile.fetched \
+		-L "https://github.com/sio/Makefile.venv/raw/v2020.08.14/Makefile.venv"
+	@echo "5afbcf51a82f629cd65ff23185acde90ebe4dec889ef80bbdc12562fbd0b2611 *Makefile.fetched" \
+		| sha256sum --check - \
+		&& mv Makefile.fetched Makefile.venv
+
+env-pip:
+ifndef PIP
+	$(error PIP is undefined)
+endif
