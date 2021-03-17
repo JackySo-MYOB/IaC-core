@@ -1,0 +1,76 @@
+.PHONY: mhelp
+SHELL := /bin/bash -e
+# Basic setup
+PROFILE := --profile myob-auth
+SHELL := /bin/bash -e
+MAKEFILE = $(shell echo "$(MAKEFILE_LIST)" | awk '{ print $$1 }')
+VARFILE = var-Makefile
+pwd = $(shell pwd)
+python := python3
+NO_COLOR = \x1b[0m
+G_COLOR = \x1b[32;01m
+R_COLOR = \x1b[31;01m
+Y_COLOR=\x1b[33;01m
+BOLD = \033[1m
+NORMAL = \033[0m
+NOW = $(shell date +'%Y-%m-%d')
+AUTHOR := Jacky So
+# Common and useful variables
+FQDN = $(shell dig -x $$(curl -s http://ifconfig.me/ip) +short | sed 's/\.$$//')
+YOURIP = $(shell curl -s http://ifconfig.me/ip)
+#ACCOUNT := $(shell aws sts get-caller-identity $(PROFILE) --output text | awk '{ print $$1 }')
+ACCOUNT := $(shell aws sts get-caller-identity $(PROFILE) --output text --query 'Account')
+REGION := ap-southeast-2
+ALL_REGIONS=$(shell printf "import boto3\nprint('\\\n'.join(map(lambda r: r['RegionName'], boto3.client('ec2').describe_regions()['Regions'])))\n" | $(python) | grep -v '^$(AWS_REGION)$$')
+## Parking
+#@grep -E '@printf.*-' Makefile-k8s-polaris | sed 's/\\n"//g' | sed 's/^.*\@printf "//g' >> $(MAKEFILE).md
+yq_VERSION := "v4.6.1"
+yq_BINARY := "yq_linux_amd64"
+
+## variables: Show all variables
+var: $(MAKEFILE) ## Show all defined variables
+	@make -pn -f $(MAKEFILE_LIST) | grep -A1 "^# makefile (from '$(MAKEFILE)'"| grep -v "^#\|^--" | sort | uniq | grep -v "^MAKE" | grep -v ".DEFAULT_GOAL" | grep " := " | awk 'BEGIN {FS = " := "}; {printf "\033[36m%-40s\033[0m %s\n", $$1, $$2}'
+	@make -pn -f $(MAKEFILE_LIST) | grep -A1 "^# makefile (from '$(MAKEFILE)'"| grep -v "^#\|^--" | sort | uniq | grep -v "^MAKE" | grep -v ".DEFAULT_GOAL" | grep " = " | awk 'BEGIN {FS = " = "}; {printf "\033[36m%-40s\033[0m %s\n", $$1, $$2}'
+
+## help: This help
+help: $(MAKEFILE)
+	@echo
+	@echo " Choose a command run:"
+	@echo
+	@grep -E '^[0-9a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-40s\033[0m %s\n", $$1, $$2}'
+	@echo
+
+mhelp:
+	@printf "$(BOLD)+ Help page: doc help prerequisite extract-help add-help $(G_COLOR)$(NO_COLOR)$(NORMAL)\n"
+
+prerequisite:
+	@grep -E '^[0-9a-zA-Z_-]+:.*?## .*$$' $(VARFILE) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-40s\033[0m %s\n", $$1, $$2}'
+
+install-csv2md: ## Install Python csvtomd
+	@pip3 install csvtomd
+
+header:
+	@printf "Description, Value\nSource:, $(MAKEFILE)\nLast Updated:, $(NOW)\nAuthor:, $(AUTHOR)"
+
+doc:
+	@printf "Description, Value\nSource:, $(MAKEFILE)\nLast Updated:, $(NOW)\nAuthor:, $(AUTHOR)" | csvtomd > $(MAKEFILE).md
+	@grep -E '^[0-9a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "+ %-40s %s \n", $$1, $$2}' >> $(MAKEFILE).md
+	@sed -i.bkp '6s/^/```diff\n/' $(MAKEFILE).md
+	@sed -i.bkp '$$s/$$/\n\```/' $(MAKEFILE).md
+
+extract-help: ## Extract help section
+	@printf "\t@help: ## Help page \n"
+	@grep -E '^[0-9a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "%-40s %s\n", $$1, $$2}' | awk '{ print $$1 }' | sed '0~7 a\printf\' | sed ':a;N;$$!ba;s/\n/ /g' | sed 's/printf/\n/g' | sed 's/^ //g' | sed 's/ $$//g' | sed 's/^/\t@printf "$$(BOLD)- jq help:$$(G_COLOR) /g' | sed 's/$$/ $$(NO_COLOR)$$(NORMAL)\\n"/g'
+
+add-help: ## Extract and output help section in $(TESTFILE)
+	@printf "\t@help: ## Help page" >> $(TESTFILE)
+	@grep -E '^[0-9a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "%-40s %s\n", $$1, $$2}' | awk '{ print $$1 }' | sed '0~7 a\printf\' | sed ':a;N;$$!ba;s/\n/ /g' | sed 's/printf/\n/g' | sed 's/^ //g' | sed 's/ $$//g' | sed 's/^/\t@printf "$$(BOLD)- jq help:$$(G_COLOR) /g' | sed 's/$$/ $$(NO_COLOR)$$(NORMAL)\\n"/g' >> $(TESTFILE)
+	@printf "\t@grep -E '^[0-9a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE) | sort | awk 'BEGIN {FS = \":.*?## \"}; {printf \"\033[36m%-40s\033[0m %s\n\", $$1, $$2}'" >> $(TESTFILE)
+
+.PHONY: sha256sum
+sha256sum: ## Generate SHA checksum of Makefile
+	@$@ $(MAKEFILE)
+
+validate-sha256sum: ## Validate SHA checksum of Makefile
+	@echo "$(shell make -f $(MAKEFILE) sha256sum|awk '{ print $$1 }')" $(MAKEFILE) | sha256sum --check - || true 
+
