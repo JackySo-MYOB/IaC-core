@@ -74,3 +74,6 @@ sha256sum: ## Generate SHA checksum of Makefile
 validate-sha256sum: ## Validate SHA checksum of Makefile
 	@echo "$(shell make -f $(MAKEFILE) sha256sum|awk '{ print $$1 }')" $(MAKEFILE) | sha256sum --check - || true 
 
+.PHONY: diff
+diff: ## Check git diff from last version - All files when $(FILE) is not defined
+	@git diff HEAD^ HEAD $(FILE)
