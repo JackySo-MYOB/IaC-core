@@ -19,7 +19,7 @@ pre-commit-hooks: ## Howto - Pre-commit hooks
 	@google-chrome --incognito $(pre-commit-hooks) &
 
 fetch-github: ## Git clone to $(REPO) - DevOps Tool codes
-        @git clone $(github-repo) $(REPO) || true
+	@git clone $(github-repo) $(REPO) || true
 
 .PHONY: pip-install-choice
 pip-install-choice: venv ## Pick requirements.txt to PIP install
