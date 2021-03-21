@@ -4,7 +4,7 @@
 #blog-howto := https://betterprogramming.pub/transform-your-favorite-python-ide-into-a-devops-tool-e0d3662baf45
 pre-commmit-howto := https://towardsdatascience.com/automating-python-workflows-with-pre-commit-hooks-e5ef8e8d50bb
 pre-commit-hooks := https://gdevops.gitlab.io/tuto_git/tools/pre-commit/pre-commit.html\#list-of-hooks-repos
-github-repo := https://github.com/JackySo-MYOB/devops-venv
+#github-repo := https://github.com/JackySo-MYOB/devops-venv
 MAKEFILE = $(shell echo "$(MAKEFILE_LIST)" | awk '{ print $$1 }')
 SHELL := /bin/bash
 SRC := src
